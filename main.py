@@ -13,6 +13,7 @@ INPUT_IMAGES = (
     ('7', 'img/7.bmp'),
     ('8', 'img/8.bmp'),
 )
+BACKGROUND = 'img/bg.bmp'
 
 def smooth_threshold(value, min, max):
     if value < min:
@@ -63,20 +64,24 @@ def calculate_mask_ycbcr(img, cb0, cr0, min_threshold, max_threshold):
 #    return mask
 
 def main():
+    background = cv2.imread(BACKGROUND, cv2.IMREAD_COLOR)
     for nome, img in INPUT_IMAGES:
         img = cv2.imread(img, cv2.IMREAD_COLOR)
         if img is None:
             print('Failed to open image. \n')
             sys.exit()
 
+        bg = cv2.resize(background, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
+
         #mask = calculate_mask_rgb(img, 0.0, 226.0, 13.0, 16.0, 128.0)
 
         mask = calculate_mask_ycbcr(img, 0.25, 0.25, 0.2, 0.25)
+        inverted_mask = 1.0 - mask
 
         #mask_hsv = calculate_mask_hsv(img, 60, 15, 25, 128.0, 128.0)
 
         for c in range(3):
-            img[:, :, c] = img[:, :, c] * mask
+            img[:, :, c] = img[:, :, c] * mask + bg[:, :, c] * inverted_mask
         
         cv2.imwrite(f'out/{nome}-mask.bmp', mask*255)
         #cv2.imwrite(f'out/{nome}-mask-hsv.bmp', mask_hsv*255)
