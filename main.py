@@ -48,6 +48,18 @@ def calculate_mask_ycbcr(img, cb0, cr0, min_threshold, max_threshold):
             mask[y, x] = color_mask_ycbcr(img[y, x, 0], img[y, x, 2], img[y, x, 1], cb0, cr0, min_threshold, max_threshold)
     return mask
 
+def transfer_hue_from_bg(img, bg, mask, min_threshold, max_threshold):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    bg = cv2.cvtColor(bg, cv2.COLOR_BGR2HSV)
+    print(f'Transfer hue, min: {np.min(img[:, :, 0])}, max: {np.max(img[:, :, 0])}')
+    h, w, c = img.shape
+    for y in range(h):
+        for x in range(w):
+            strength = mask[y, x]
+            if mask[y, x] > min_threshold and mask[y, x] < max_threshold:
+                img[y, x, 0] = img[y, x, 0] * (1.0 - strength) + bg[y, x, 0] * strength
+    return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+
 #def color_mask_hue(hue, saturation, value, key, min_range, max_range, min_saturation, min_value):
 #    diff = np.abs(hue - key)
 #    return smooth_threshold(diff, min_range, max_range)# * \
@@ -73,10 +85,14 @@ def main():
 
         bg = cv2.resize(background, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
 
-        #mask = calculate_mask_rgb(img, 0.0, 226.0, 13.0, 16.0, 128.0)
+        #mask = calculate_mask_rgb(img, 84.0, 166.0, 66.0, 16.0, 128.0)
 
-        mask = calculate_mask_ycbcr(img, 0.25, 0.25, 0.2, 0.25)
+        mask = calculate_mask_ycbcr(img, 0.25, 0.25, 0.2, 0.3)
+        mask = cv2.GaussianBlur(mask, (0, 0), 1.0)
+        #mask = np.where(mask == 1.0, 0.0, mask)
         inverted_mask = 1.0 - mask
+
+        img = transfer_hue_from_bg(img, bg, inverted_mask, 0.0, 1.0)
 
         #mask_hsv = calculate_mask_hsv(img, 60, 15, 25, 128.0, 128.0)
 
