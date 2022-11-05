@@ -23,17 +23,17 @@ def smooth_threshold(value, min, max):
     else:
         return (value - min)/(max - min)
 
-def color_mask_rgb(r, g, b, r0, g0, b0, min_threshold, max_threshold):
-    distance = np.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2)
-    return smooth_threshold(distance, min_threshold, max_threshold)
+#def color_mask_rgb(r, g, b, r0, g0, b0, min_threshold, max_threshold):
+#    distance = np.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2)
+#    return smooth_threshold(distance, min_threshold, max_threshold)
 
-def calculate_mask_rgb(img, r0, g0, b0, min_threshold, max_threshold):
-    mask = img[:, :, 0].astype(np.float32)
-    h, w = mask.shape
-    for y in range(h):
-        for x in range(w):
-            mask[y, x] = color_mask_rgb(img[y, x, 2], img[y, x, 1], img[y, x, 0], r0, g0, b0, min_threshold, max_threshold)
-    return mask
+#def calculate_mask_rgb(img, r0, g0, b0, min_threshold, max_threshold):
+#    mask = img[:, :, 0].astype(np.float32)
+#    h, w = mask.shape
+#    for y in range(h):
+#        for x in range(w):
+#            mask[y, x] = color_mask_rgb(img[y, x, 2], img[y, x, 1], img[y, x, 0], r0, g0, b0, min_threshold, max_threshold)
+#    return mask
 
 def color_mask_ycbcr(y, cb, cr, cb0, cr0, min_threshold, max_threshold):
     distance = np.sqrt((cb - cb0)**2 + (cr - cr0)**2)
@@ -92,14 +92,40 @@ def main():
         #mask = np.where(mask == 1.0, 0.0, mask)
         inverted_mask = 1.0 - mask
 
-        img = transfer_hue_from_bg(img, bg, inverted_mask, 0.0, 1.0)
+
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        value_mask = hsv[:, :, 2]/255.0 * inverted_mask
+
+        img = transfer_hue_from_bg(img, bg, value_mask, 0.0, 1.1)
+        #mean = np.ma.masked_where(inverted_mask > 0.9, value_mask).max() #.mean()#np.mean(value_mask)
+        #print(mean)
+
+        #value_mask = value_mask - mean
+
+        print(f'vmask min: {np.min(value_mask)} max: {np.max(value_mask)}')
+
+        #for c in range(3):
+        #    img[:, :, c] = img[:, :, c] * mask + hsv[:, :, 2] * inverted_mask
+
+        #cv2.imwrite(f'out/{nome}-sat.bmp', hsv[:, :, 1])
+        #cv2.imwrite(f'out/{nome}-val.bmp', hsv[:, :, 2])
+
+
+        hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+
+        #cv2.imwrite(f'out/{nome}-lum.bmp', hls[:, :, 1])
+        #cv2.imwrite(f'out/{nome}-sat-hls.bmp', hls[:, :, 2])
+
+
 
         #mask_hsv = calculate_mask_hsv(img, 60, 15, 25, 128.0, 128.0)
 
         for c in range(3):
-            img[:, :, c] = img[:, :, c] * mask + bg[:, :, c] * inverted_mask
+            img[:, :, c] = img[:, :, c] * mask + bg[:, :, c] * value_mask #(value_mask + bg[:, :, c]) * inverted_mask # + img[:, :, c] * inverted_mask * 0.25
         
         cv2.imwrite(f'out/{nome}-mask.bmp', mask*255)
+        cv2.imwrite(f'out/{nome}-vmask.bmp', value_mask*255)
         #cv2.imwrite(f'out/{nome}-mask-hsv.bmp', mask_hsv*255)
         cv2.imwrite(f'out/{nome}.bmp', img)
 
