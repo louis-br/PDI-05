@@ -48,7 +48,7 @@ def calculate_mask_ycbcr(img, cb0, cr0, min_threshold, max_threshold):
             mask[y, x] = color_mask_ycbcr(img[y, x, 0], img[y, x, 2], img[y, x, 1], cb0, cr0, min_threshold, max_threshold)
     return mask
 
-def supress_foreground_key(img, hue_key, alpha):
+def supress_foreground_key(img, hue_key, min_key_diff, max_key_diff):
     opposite_key = (hue_key + 180) % 360
     img = img.astype(np.float32)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -59,6 +59,7 @@ def supress_foreground_key(img, hue_key, alpha):
     for y in range(h):
         for x in range(w):
             angle = (np.abs(hsv[y, x, 0] - hue_key) + 180) % 360 - 180
+            alpha = 1.0 - smooth_threshold(angle, min_key_diff, max_key_diff)
             angle_cos = np.cos(np.deg2rad(angle)) * alpha
             cos[y, x] = angle_cos
             if angle_cos < 0.0:
@@ -88,7 +89,7 @@ def main():
         mask = cv2.GaussianBlur(mask, (0, 0), 1.0)
         inverted_mask = 1.0 - mask
 
-        supressed = supress_foreground_key(img, 120.0, 0.8)
+        supressed = supress_foreground_key(img, 120.0, 55.0, 65.0)
 
         border_mask = mask
         #border_mask = np.where(mask < 1.0, mask, 0.0)
