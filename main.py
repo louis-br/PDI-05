@@ -83,9 +83,7 @@ def main():
 
         bg = cv2.resize(background, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
 
-        #print("Green:", cv2.cvtColor(np.uint8([[[0, 255, 0]]]), cv2.COLOR_BGR2YCrCb)/255.0)
-
-        mask = calculate_mask_ycbcr(img, 0.25, 0.25, 0.2, 0.25)
+        mask = calculate_mask_ycbcr(img, 0.25, 0.25, 0.2, 0.28)
         mask = cv2.GaussianBlur(mask, (0, 0), 1.0)
         inverted_mask = 1.0 - mask
 
@@ -97,9 +95,13 @@ def main():
 
         img = border_mask[:, :, None] * supressed + (1.0 - border_mask)[:, :, None] * img
 
-        hsv = cv2.cvtColor(img.astype(np.float32), cv2.COLOR_BGR2HSV)
+        value_mask = cv2.cvtColor(img.astype(np.float32), cv2.COLOR_BGR2HSV)[:, :, 2]/255.0
+        value_mask = value_mask * inverted_mask
 
-        value_mask = hsv[:, :, 2]/255.0 * inverted_mask
+        percentile = np.percentile(value_mask, 50)
+        if percentile <= 0.0:
+            percentile = 1.0
+        value_mask = (value_mask / percentile).clip(None, 1.0)
 
         img[:, :, :] = img[:, :, :] * mask[:, :, None] + bg[:, :, :] * value_mask[:, :, None]
         
